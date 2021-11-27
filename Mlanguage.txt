@@ -1,0 +1,20 @@
+let
+    Source = Excel.Workbook(File.Contents("F:\ANNAIAH DATA\PowerBI\EmployeeData.xlsx"), null, true),
+    EmployeeData1_Sheet = Source{[Item="EmployeeData1",Kind="Sheet"]}[Data],
+    #"Promoted Headers" = Table.PromoteHeaders(EmployeeData1_Sheet, [PromoteAllScalars=true]),
+    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"EmployeeID", Int64.Type}, {"NationalIDNumber", Int64.Type}, {"ContactID", Int64.Type}, {"LoginID", type text}, {"ManagerID", Int64.Type}, {"Title", type text}, {"BirthDate", type datetime}, {"MaritalStatus", type text}, {"Gender", type text}, {"HireDate", type datetime}, {"Dept", type text}, {"Salary", Int64.Type}, {"Job Grade", type text}, {"CurrentFlag", Int64.Type}, {"rowguid", type text}}),
+    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"ContactID", "LoginID", "CurrentFlag", "rowguid", "NationalIDNumber"}),
+    #"Extracted Date" = Table.TransformColumns(#"Removed Columns",{{"BirthDate", DateTime.Date, type date}}),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Extracted Date",{{"MaritalStatus", type text}}),
+    #"Replaced Value" = Table.ReplaceValue(#"Changed Type1","S","Single",Replacer.ReplaceText,{"MaritalStatus"}),
+    #"Replaced Value1" = Table.ReplaceValue(#"Replaced Value","M","Married",Replacer.ReplaceText,{"MaritalStatus"}),
+    #"Replaced Value2" = Table.ReplaceValue(#"Replaced Value1","M","Male",Replacer.ReplaceText,{"Gender"}),
+    #"Replaced Value3" = Table.ReplaceValue(#"Replaced Value2","F","Female",Replacer.ReplaceText,{"Gender"}),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Replaced Value3",{{"HireDate", type date}}),
+    #"Split Column by Delimiter" = Table.SplitColumn(#"Changed Type2", "Title", Splitter.SplitTextByEachDelimiter({" "}, QuoteStyle.Csv, false), {"Title.1", "Title.2"}),
+    #"Changed Type3" = Table.TransformColumnTypes(#"Split Column by Delimiter",{{"Title.1", type text}, {"Title.2", type text}}),
+    #"Renamed Columns" = Table.RenameColumns(#"Changed Type3",{{"Title.1", "First name"}, {"Title.2", "Last Name"}}),
+    #"Merged Columns" = Table.CombineColumns(#"Renamed Columns",{"Dept", "Job Grade"},Combiner.CombineTextByDelimiter("--", QuoteStyle.None),"Dept--Job"),
+    #"Added Conditional Column" = Table.AddColumn(#"Merged Columns", "Respect", each if [Gender] = "Male" then "Mr" else if [MaritalStatus] = "Single" then "Ms" else if [MaritalStatus] = "Married" then "Mrs" else null)
+in
+    #"Added Conditional Column"
